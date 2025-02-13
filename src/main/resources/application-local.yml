@@ -3,10 +3,6 @@ server:
   servlet:
     context-path: /api
 spring:
-#  #开放更大的文件上传体积
-#  servlet:
-#    multipart:
-#      max-file-size: 10MB
   application:
     name: muyang-picture-backend
     #数据库配置
@@ -39,3 +35,11 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.muyang.muyangpicturebackend.controller
+# 对象存储配置（需要从腾讯云获取）
+cos:
+  client:
+    host: https://muyang-1341770834.cos.ap-shanghai.myqcloud.com
+    SecretId: AKIDXxBD2f0DE5kFds7E9fJl1A7TglfMwY8X
+    SecretKey: JQOAnESUq0ykLjutfFfw1ub6OL7g3FE3
+    region: ap-shanghai
+    bucket: muyang-1341770834
