@@ -10,6 +10,7 @@ import com.muyang.muyangpicturebackend.model.dto.picture.PictureUploadRequest;
 import com.muyang.muyangpicturebackend.model.entity.Picture;
 import com.muyang.muyangpicturebackend.model.entity.User;
 import com.muyang.muyangpicturebackend.model.vo.PictureVO;
+import org.springframework.scheduling.annotation.Async;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -52,5 +53,6 @@ public interface PictureService extends IService<Picture> {
     );
 
 
-
+    @Async
+    void clearPictureFile(Picture oldPicture);
 }

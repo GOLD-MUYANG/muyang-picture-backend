@@ -1,7 +1,10 @@
 package com.muyang.muyangpicturebackend.controller;
 
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.muyang.muyangpicturebackend.annotataion.AuthCheck;
 import com.muyang.muyangpicturebackend.common.BaseResponse;
 import com.muyang.muyangpicturebackend.common.DeleteRequest;
@@ -20,6 +23,10 @@ import com.muyang.muyangpicturebackend.service.PictureService;
 import com.muyang.muyangpicturebackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +35,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author 李传旭
@@ -42,6 +50,16 @@ public class PictureController {
     private UserService userService;
     @Resource
     private PictureService pictureService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    private final Cache<String, String> LOCAL_CACHE =
+            Caffeine.newBuilder().initialCapacity(1024)
+                    .maximumSize(10000L)
+                    // 缓存 5 分钟移除
+                    .expireAfterWrite(5L, TimeUnit.MINUTES)
+                    .build();
+
 
     /**
      * 上传图片（可重新上传）
@@ -171,6 +189,61 @@ public class PictureController {
     }
 
     /**
+     * 分页获取图片列表（缓存）,缓存中没有再查数据库，并将结果设置到缓存中
+     *
+     * @param pictureQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/list/page/vo/cache")
+    public BaseResponse<Page<PictureVO>> listPictureVOByPageWithCache(@RequestBody PictureQueryRequest pictureQueryRequest,
+                                                                      HttpServletRequest request) {
+        long current = pictureQueryRequest.getCurrent();
+        long size = pictureQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        // 普通用户默认只能查看已过审的数据
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        // 构建缓存 key
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        String cacheKey = "muyangpicture:listPictureVOByPage:" + hashKey;
+
+        //多级缓存
+        //1、先从本地缓存中查询
+        String cachedValue = LOCAL_CACHE.getIfPresent(cacheKey);
+        if (cachedValue != null) {
+            // 如果缓存命中，返回结果
+            Page<PictureVO> cachedPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPage);
+        }
+        // 2、再从 Redis 缓存中查询
+        ValueOperations<String, String> opsForValue = stringRedisTemplate.opsForValue();
+        cachedValue = opsForValue.get(cacheKey);
+        if (cachedValue != null) {
+            // 如果缓存命中，更新本地缓存，返回结果
+            LOCAL_CACHE.put(cacheKey, cachedValue);
+            Page<PictureVO> cachedPage = JSONUtil.toBean(cachedValue, Page.class);
+            return ResultUtils.success(cachedPage);
+        }
+        // 3、缓存未命中，则查询数据库
+        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
+                pictureService.getQueryWrapper(pictureQueryRequest));
+        // 获取封装类
+        Page<PictureVO> pictureVOPage = pictureService.getPictureVOPage(picturePage, request);
+
+        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
+        // 5 - 10 分钟随机过期，防止雪崩
+        int cacheExpireTime = 300 + RandomUtil.randomInt(0, 300);
+        // 存入缓存，包括本地缓存和 Redis 缓存
+        opsForValue.set(cacheKey, cacheValue, cacheExpireTime, TimeUnit.MINUTES);
+        LOCAL_CACHE.put(cacheKey, cacheValue);
+        // 返回结果
+        return ResultUtils.success(pictureVOPage);
+    }
+
+
+    /**
      * 编辑图片（给用户使用）
      */
     @PostMapping("/edit")
@@ -197,7 +270,7 @@ public class PictureController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         //补充审核参数
-        pictureService.fillReviewParams(picture,loginUser);
+        pictureService.fillReviewParams(picture, loginUser);
         // 操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -224,6 +297,7 @@ public class PictureController {
         pictureService.doPictureReview(pictureReviewRequest, loginUser);
         return ResultUtils.success(true);
     }
+
     /**
      * 通过 URL 上传图片（可重新上传）
      */
@@ -248,6 +322,5 @@ public class PictureController {
         int uploadCount = pictureService.uploadPictureByBatch(pictureUploadByBatchRequest, loginUser);
         return ResultUtils.success(uploadCount);
     }
-
 
 }
