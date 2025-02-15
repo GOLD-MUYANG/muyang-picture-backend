@@ -3,10 +3,7 @@ package com.muyang.muyangpicturebackend.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.muyang.muyangpicturebackend.model.dto.picture.PictureQueryRequest;
-import com.muyang.muyangpicturebackend.model.dto.picture.PictureReviewRequest;
-import com.muyang.muyangpicturebackend.model.dto.picture.PictureUploadByBatchRequest;
-import com.muyang.muyangpicturebackend.model.dto.picture.PictureUploadRequest;
+import com.muyang.muyangpicturebackend.model.dto.picture.*;
 import com.muyang.muyangpicturebackend.model.entity.Picture;
 import com.muyang.muyangpicturebackend.model.entity.User;
 import com.muyang.muyangpicturebackend.model.vo.PictureVO;
@@ -55,4 +52,10 @@ public interface PictureService extends IService<Picture> {
 
     @Async
     void clearPictureFile(Picture oldPicture);
+
+    void checkPictureAuth(User loginUser, Picture picture);
+
+    void deletePicture(long pictureId, User loginUser);
+
+    void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
 }
