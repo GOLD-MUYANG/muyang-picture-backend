@@ -104,7 +104,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "空间大小不足");
             }
         }
-
         // 用于判断是新增还是更新图片
         Long pictureId = null;
         if (pictureUploadRequest != null) {

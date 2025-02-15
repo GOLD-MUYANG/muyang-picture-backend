@@ -74,7 +74,7 @@ public class PictureController {
             PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-        //上传图片，并放到指定用户id的文件夹下
+        //上传图片
         PictureVO pictureVO = pictureService.uploadPicture(multipartFile, pictureUploadRequest, loginUser);
         return ResultUtils.success(pictureVO);
     }
