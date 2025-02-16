@@ -3,6 +3,10 @@ server:
   servlet:
     context-path: /api
 spring:
+  #开放更大的文件上传体积
+  servlet:
+    multipart:
+      max-file-size: 10MB
   application:
     name: muyang-picture-backend
     #数据库配置
@@ -11,7 +15,14 @@ spring:
     url: jdbc:mysql://localhost:3306/muyang_picture?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: muyang123
-
+  #   Redis 配置
+  redis:
+    database: 0
+    host: 127.0.0.1
+    port: 6379
+    timeout: 5000
+#  profiles:
+#    active: local
 mybatis-plus:
   configuration:
     # 驼峰命名
@@ -43,3 +54,6 @@ cos:
     SecretKey: JQOAnESUq0ykLjutfFfw1ub6OL7g3FE3
     region: ap-shanghai
     bucket: muyang-1341770834
+# 阿里云 AI 配置
+aliYunAi:
+  apiKey: sk-7906da1f952d4574832a391227c30a01
