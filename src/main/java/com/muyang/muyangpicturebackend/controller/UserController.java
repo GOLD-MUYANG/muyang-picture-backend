@@ -1,6 +1,5 @@
 package com.muyang.muyangpicturebackend.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.muyang.muyangpicturebackend.annotataion.AuthCheck;
 import com.muyang.muyangpicturebackend.common.BaseResponse;
@@ -12,12 +11,12 @@ import com.muyang.muyangpicturebackend.exception.ErrorCode;
 import com.muyang.muyangpicturebackend.exception.ThrowUtils;
 import com.muyang.muyangpicturebackend.model.dto.user.*;
 import com.muyang.muyangpicturebackend.model.entity.User;
-import com.muyang.muyangpicturebackend.model.enums.UserRoleEnum;
 import com.muyang.muyangpicturebackend.model.vo.LoginUserVO;
 import com.muyang.muyangpicturebackend.model.vo.UserVO;
 import com.muyang.muyangpicturebackend.service.UserService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
+
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -73,7 +72,7 @@ public class UserController {
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request){
         //传入request，用request拿session进行判断
         User loginUser = userService.getLoginUser(request);
-        return ResultUtils.success(userService.getUserLoginVO(loginUser));
+        return ResultUtils.success(userService.getLoginUserVO(loginUser));
     }
 
     /**

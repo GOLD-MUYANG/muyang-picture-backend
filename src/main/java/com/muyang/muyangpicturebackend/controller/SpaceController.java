@@ -9,6 +9,7 @@ import com.muyang.muyangpicturebackend.constant.UserConstant;
 import com.muyang.muyangpicturebackend.exception.BusinessException;
 import com.muyang.muyangpicturebackend.exception.ErrorCode;
 import com.muyang.muyangpicturebackend.exception.ThrowUtils;
+import com.muyang.muyangpicturebackend.manager.auth.SpaceUserAuthManager;
 import com.muyang.muyangpicturebackend.model.dto.space.*;
 import com.muyang.muyangpicturebackend.model.entity.Space;
 import com.muyang.muyangpicturebackend.model.entity.User;
@@ -42,6 +43,8 @@ public class SpaceController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private SpaceUserAuthManager spaceUserAuthManager;
     /**
      * 创建空间
      * @param spaceAddRequest
@@ -161,9 +164,14 @@ public class SpaceController {
         // 查询数据库
         Space space = spaceService.getById(id);
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
+        SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
+        User loginUser = userService.getLoginUser(request);
+        List<String> permissionList = spaceUserAuthManager.getPermissionList(space, loginUser);
+        spaceVO.setPermissionList(permissionList);
         // 获取封装类
-        return ResultUtils.success(spaceService.getSpaceVO(space,request));
+        return ResultUtils.success(spaceVO);
     }
+
 
     /**
      * 分页获取空间列表（仅管理员可用）

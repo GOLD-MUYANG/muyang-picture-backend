@@ -6,16 +6,16 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.muyang.muyangpicturebackend.constant.UserConstant;
 import com.muyang.muyangpicturebackend.exception.BusinessException;
 import com.muyang.muyangpicturebackend.exception.ErrorCode;
+import com.muyang.muyangpicturebackend.manager.auth.StpKit;
+import com.muyang.muyangpicturebackend.mapper.UserMapper;
 import com.muyang.muyangpicturebackend.model.dto.user.UserQueryRequest;
 import com.muyang.muyangpicturebackend.model.entity.User;
 import com.muyang.muyangpicturebackend.model.enums.UserRoleEnum;
 import com.muyang.muyangpicturebackend.model.vo.LoginUserVO;
 import com.muyang.muyangpicturebackend.model.vo.UserVO;
 import com.muyang.muyangpicturebackend.service.UserService;
-import com.muyang.muyangpicturebackend.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -25,6 +25,8 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.muyang.muyangpicturebackend.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * @author lenovo
@@ -125,8 +127,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
         //4.保存用户的登录状态
-        request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, user);
-        return this.getUserLoginVO(user);
+        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+// 4. 记录用户登录态到 Sa-token，便于空间鉴权时使用，注意保证该用户信息与 SpringSession 中的信息过期时间一致
+        StpKit.SPACE.login(user.getId());
+        StpKit.SPACE.getSession().set(USER_LOGIN_STATE, user);
+        return this.getLoginUserVO(user);
     }
 
     /**
@@ -137,7 +142,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public User getLoginUser(HttpServletRequest request) {
         //判断是否登录
-        Object attribute = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
         //如果未登录或者没有id的异常情况，返回null
         User currentUser = (User) attribute;
         if (currentUser == null || currentUser.getId() == null) {
@@ -159,7 +164,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return
      */
     @Override
-    public LoginUserVO getUserLoginVO(User user) {
+    public LoginUserVO getLoginUserVO(User user) {
         if (user == null) {
             return null;
         }
@@ -206,13 +211,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public boolean userLogout(HttpServletRequest request) {
         //判断是否登录
-        Object attribute = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        Object attribute = request.getSession().getAttribute(USER_LOGIN_STATE);
         //如果未登录或者没有id的异常情况,抛异常
         if (attribute==null) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR,"未登录");
         }
         //移除登录
-        request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+        request.getSession().removeAttribute(USER_LOGIN_STATE);
         return true;
     }
 
